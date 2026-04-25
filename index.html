@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITO 摄影提示词生成器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F7F7F8;
+            --bg-tertiary: #F3F4F6;
+            --border: #E5E7EB;
+            --text-primary: #111827;
+            --text-secondary: #6B7280;
+            --text-tertiary: #9CA3AF;
+            --accent: #000000;
+            --accent-hover: #333333;
+            --success: #10B981;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .app { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            border-right: 1px solid var(--border);
+            padding: 20px 12px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            background: var(--bg-primary);
+        }
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            margin-bottom: 32px;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .sidebar-logo svg { width: 24px; height: 24px; }
+        .sidebar-section { margin-bottom: 24px; }
+        .sidebar-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .sidebar-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .sidebar-item.active { background: var(--accent); color: white; }
+        .sidebar-item svg { width: 18px; height: 18px; opacity: 0.7; }
+        .sidebar-item.active svg { opacity: 1; }
+
+        /* Main */
+        .main { flex: 1; margin-left: 240px; }
+        .header {
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-primary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title { font-size: 15px; font-weight: 500; }
+        .content { padding: 32px; max-width: 1100px; }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: none;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--bg-tertiary); }
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .btn-ghost:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+        /* Sections */
+        .section {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 16px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.15s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        select.form-input { cursor: pointer; }
+
+        /* Product Grid */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .product-btn {
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        .product-btn:hover { border-color: var(--accent); }
+        .product-btn.active {
+            border-color: var(--accent);
+            background: var(--bg-secondary);
+        }
+        .product-icon { font-size: 24px; margin-bottom: 6px; }
+        .product-name { font-size: 13px; font-weight: 500; }
+
+        /* Color Grid */
+        .color-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+        .color-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .color-btn:hover { transform: scale(1.1); }
+        .color-btn.active { border-color: var(--accent); }
+
+        /* Style Tags */
+        .style-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+        .style-tag {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: var(--bg-primary);
+        }
+        .style-tag:hover { border-color: var(--accent); }
+        .style-tag.active {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Platform Tabs */
+        .platform-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+        .platform-tab {
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            background: var(--bg-primary);
+            transition: all 0.15s;
+        }
+        .platform-tab:hover { background: var(--bg-secondary); }
+        .platform-tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        /* Output */
+        .output-box {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 120px;
+        }
+        .prompt-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .negative-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-tertiary);
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border);
+            white-space: pre-wrap;
+        }
+        .output-actions { display: flex; gap: 8px; margin-top: 16px; }
+        .action-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            background: var(--bg-primary);
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .action-btn:hover { background: var(--bg-secondary); }
+        .action-btn svg { width: 14px; height: 14px; }
+
+        /* Checkboxes */
+        .checkbox-row { display: flex; gap: 16px; flex-wrap: wrap; }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .checkbox-item input { display: none; }
+        .checkbox-box {
+            width: 16px;
+            height: 16px;
+            border: 1.5px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .checkbox-item:hover .checkbox-box { border-color: var(--accent); }
+        .checkbox-item.checked .checkbox-box {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .checkbox-item.checked .checkbox-box::after {
+            content: '✓';
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            width: 480px;
+            max-width: 90vw;
+            box-shadow: var(--shadow-md);
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title { font-size: 16px; font-weight: 600; }
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+        .modal-close:hover { background: var(--bg-secondary); }
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* KB Status */
+        .kb-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+        .kb-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-tertiary);
+        }
+        .kb-dot.connected { background: var(--success); }
+        .kb-text { color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <path d="M21 15l-5-5L5 21"/>
+                </svg>
+                ITO 提示词
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-label">摄影类型</div>
+                <div class="sidebar-item active" data-tab="product">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    产品摄影
+                </div>
+                <div class="sidebar-item" data-tab="portrait">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0114 0v2"/></svg>
+                    人像摄影
+                </div>
+                <div class="sidebar-item" data-tab="scene">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8M14 7h3v3"/></svg>
+                    场景图
+                </div>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-label">设置</div>
+                <div class="sidebar-item" id="settingsBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                    知识库配置
+                </div>
+            </div>
+        </div>
+
+        <!-- Main -->
+        <div class="main">
+            <div class="header">
+                <div class="header-title" id="pageTitle">产品摄影 · 提示词生成</div>
+                <button class="btn btn-primary" id="generateBtn">生成</button>
+            </div>
+            
+            <div class="content">
+                <!-- Product Type -->
+                <div class="section">
+                    <div class="section-title">产品类型</div>
+                    <div class="product-grid" id="productGrid">
+                        <button class="product-btn active" data-product="backpack">
+                            <div class="product-icon">🎒</div>
+                            <div class="product-name">双肩包</div>
+                        </button>
+                        <button class="product-btn" data-product="trolley">
+                            <div class="product-icon">🧳</div>
+                            <div class="product-name">旅行箱</div>
+                        </button>
+                        <button class="product-btn" data-product="crossbody">
+                            <div class="product-icon">👜</div>
+                            <div class="product-name">斜挎包</div>
+                        </button>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label class="form-label">产品名称（选填）</label>
+                        <input type="text" class="form-input" id="productName" placeholder="如：TRUFFLE系列">
+                    </div>
+                </div>
+
+                <!-- Scene & Color -->
+                <div class="section">
+                    <div class="section-title">场景风格</div>
+                    <div class="form-group">
+                        <label class="form-label">背景类型</label>
+                        <select class="form-input" id="scene">
+                            <option value="pure">纯色渐变</option>
+                            <option value="texture">材质质感</option>
+                            <option value="lifestyle">生活方式</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">背景颜色</label>
+                        <div class="color-grid" id="colorGrid">
+                            <button class="color-btn active" data-color="#F5F5F5" style="background: #F5F5F5;"></button>
+                            <button class="color-btn" data-color="#E8E4E0" style="background: #E8E4E0;"></button>
+                            <button class="color-btn" data-color="#2C3E50" style="background: #2C3E50;"></button>
+                            <button class="color-btn" data-color="#1A1A1A" style="background: #1A1A1A;"></button>
+                            <button class="color-btn" data-color="#8B4513" style="background: #8B4513;"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lighting & Camera -->
+                <div class="section">
+                    <div class="section-title">光线与角度</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">光线</label>
+                            <select class="form-input" id="lighting">
+                                <option value="柔光箱">柔光箱</option>
+                                <option value="硬光">硬光</option>
+                                <option value="自然光">自然光</option>
+                                <option value="黄金时刻">黄金时刻</option>
+                                <option value="窗口光">窗口光</option>
+                                <option value="蝴蝶光">蝴蝶光</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">角度</label>
+                            <select class="form-input" id="angle">
+                                <option value="正面">正面</option>
+                                <option value="侧面45°">侧面45°</option>
+                                <option value="侧面90°">侧面90°</option>
+                                <option value="俯视">俯视</option>
+                                <option value="低角度">低角度</option>
+                                <option value="鸟瞰">鸟瞰</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">镜头</label>
+                            <select class="form-input" id="lens">
+                                <option value="90mm微距">90mm微距</option>
+                                <option value="50mm标准">50mm标准</option>
+                                <option value="85mm人像">85mm人像</option>
+                                <option value="35mm广角">35mm广角</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">景深</label>
+                            <select class="form-input" id="aperture">
+                                <option value="f/8-f/11深景深">f/8-f/11 深景深</option>
+                                <option value="f/2.8浅景深">f/2.8 浅景深</option>
+                                <option value="f/5.6中等">f/5.6 中等</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Style -->
+                <div class="section">
+                    <div class="section-title">摄影风格</div>
+                    <div class="style-grid" id="styleGrid">
+                        <button class="style-tag active" data-style="commercial">商业广告</button>
+                        <button class="style-tag" data-style="luxury">高端奢华</button>
+                        <button class="style-tag" data-style="minimal">简约清新</button>
+                        <button class="style-tag" data-style="film">胶片质感</button>
+                        <button class="style-tag" data-style="cinematic">电影感</button>
+                    </div>
+                </div>
+
+                <!-- Platform Output -->
+                <div class="section">
+                    <div class="section-title">生成平台</div>
+                    <div class="platform-tabs">
+                        <button class="platform-tab active" data-platform="mj">Midjourney</button>
+                        <button class="platform-tab" data-platform="sd">Stable Diffusion</button>
+                        <button class="platform-tab" data-platform="lovart">lovart</button>
+                    </div>
+                    
+                    <div class="output-box">
+                        <div class="prompt-text" id="promptOutput">点击「生成」按钮开始生成提示词</div>
+                        <div class="negative-text" id="negativeOutput" style="display:none;"></div>
+                    </div>
+                    
+                    <div class="output-actions">
+                        <button class="action-btn" id="copyBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            复制
+                        </button>
+                        <button class="action-btn" id="exportBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                            导出 TXT
+                        </button>
+                    </div>
+                    
+                    <div class="checkbox-row" style="margin-top: 16px;">
+                        <label class="checkbox-item" id="edgeLightCheck">
+                            <span class="checkbox-box"></span>
+                            边缘轮廓光
+                        </label>
+                        <label class="checkbox-item" id="detailCheck">
+                            <span class="checkbox-box"></span>
+                            细节特写
+                        </label>
+                        <label class="checkbox-item" id="brandCheck">
+                            <span class="checkbox-box"></span>
+                            品牌质感
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">知识库配置</div>
+                <button class="modal-close" id="closeModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="kb-status" id="kbStatus">
+                    <span class="kb-dot"></span>
+                    <span class="kb-text">未连接知识库（使用默认配置）</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Base</label>
+                    <input type="text" class="form-input" id="apiBase" placeholder="https://ima.qq.com/openapi/wiki/v1/">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Client ID</label>
+                    <input type="text" class="form-input" id="clientId" placeholder="your-client-id">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Key</label>
+                    <input type="password" class="form-input" id="apiKey" placeholder="your-api-key">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">知识库 ID</label>
+                    <input type="text" class="form-input" id="kbId" placeholder="knowledge-base-id">
+                </div>
+                <button class="btn btn-secondary" id="testConnection" style="width: 100%;">测试连接</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelSettings">取消</button>
+                <button class="btn btn-primary" id="saveSettings">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">已复制到剪贴板</div>
+
+    <script>
+        // State
+        const state = {
+            tab: 'product',
+            product: 'backpack',
+            productName: '',
+            scene: 'pure',
+            color: '#F5F5F5',
+            lighting: '柔光箱',
+            angle: '正面',
+            lens: '90mm微距',
+            aperture: 'f/8-f/11深景深',
+            style: 'commercial',
+            platform: 'mj',
+            edgeLight: false,
+            detail: false,
+            brand: false,
+            kbConnected: false,
+            kbProducts: null
+        };
+
+        // Product descriptions
+        const productDescs = {
+            backpack: 'ITO时尚双肩包，优质聚酯纤维材质，精密缝线工艺，五金配件精致',
+            trolley: 'ITO商务旅行拉杆箱，PC+ABS材质，万向轮静音顺滑，TSA海关锁',
+            crossbody: 'ITO休闲斜挎包，头层牛皮，手工缝线，可调节肩带'
+        };
+
+        // Style configs
+        const styleConfigs = {
+            commercial: { palette: '明亮高饱和', mood: '专业商业', ref: '商业广告摄影' },
+            luxury: { palette: '低饱和高级灰，金色调', mood: '高端奢华', ref: 'VOGUE时尚大片' },
+            minimal: { palette: '莫兰迪色系', mood: '简约清新', ref: '北欧极简' },
+            film: { palette: 'Kodak Portra 400胶片感', mood: '复古温暖', ref: 'Leica胶片' },
+            cinematic: { palette: '青橙色调', mood: '电影感', ref: '电影剧照' }
+        };
+
+        // Tab titles
+        const tabTitles = {
+            product: '产品摄影 · 提示词生成',
+            portrait: '人像摄影 · 提示词生成',
+            scene: '场景图 · 提示词生成'
+        };
+
+        // Portrait prompts
+        const portraitStyles = {
+            commercial: { mood: '自信活力', scene: '现代室内', light: '柔光箱' },
+            luxury: { mood: '高贵冷艳', scene: '奢华空间', light: '轮廓光' },
+            minimal: { mood: '松弛自然', scene: '极简空间', light: '窗口光' },
+            film: { mood: '复古胶片感', scene: '复古场景', light: '暖色调' },
+            cinematic: { mood: '电影叙事感', scene: '电影场景', light: '戏剧光' }
+        };
+
+        // Scene prompts
+        const sceneStyles = {
+            commercial: { type: '城市建筑', mood: '现代都市', light: '黄金时刻' },
+            luxury: { type: '自然风景', mood: '高端度假', light: '日出日落' },
+            minimal: { type: '极简空间', mood: '留白意境', light: '柔和自然光' },
+            film: { type: '复古街景', mood: '怀旧胶片', light: '街灯暖光' },
+            cinematic: { type: '电影感场景', mood: '戏剧张力', light: '明暗对比' }
+        };
+
+        // DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching
+            document.querySelectorAll('.sidebar-item[data-tab]').forEach(item => {
+                item.addEventListener('click', function() {
+                    state.tab = this.dataset.tab;
+                    document.getElementById('pageTitle').textContent = tabTitles[state.tab];
+                    document.querySelectorAll('.sidebar-item[data-tab]').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    generatePrompt();
+                });
+            });
+
+            // Product selection
+            document.querySelectorAll('.product-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    state.product = this.dataset.product;
+                    document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    generatePrompt();
+                });
+            });
+
+            // Color selection
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    state.color = this.dataset.color;
+                    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    generatePrompt();
+                });
+            });
+
+            // Style selection
+            document.querySelectorAll('.style-tag').forEach(tag => {
+                tag.addEventListener('click', function() {
+                    state.style = this.dataset.style;
+                    document.querySelectorAll('.style-tag').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    generatePrompt();
+                });
+            });
+
+            // Platform selection
+            document.querySelectorAll('.platform-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    state.platform = this.dataset.platform;
+                    document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    generatePrompt();
+                });
+            });
+
+            // Checkbox toggles
+            ['edgeLightCheck', 'detailCheck', 'brandCheck'].forEach(id => {
+                const el = document.getElementById(id);
+                const key = id.replace('Check', '');
+                el.addEventListener('click', function() {
+                    state[key] = !state[key];
+                    this.classList.toggle('checked', state[key]);
+                    generatePrompt();
+                });
+            });
+
+            // Select changes
+            ['scene', 'lighting', 'angle', 'lens', 'aperture'].forEach(id => {
+                document.getElementById(id).addEventListener('change', function() {
+                    state[id] = this.value;
+                    generatePrompt();
+                });
+            });
+
+            // Product name
+            document.getElementById('productName').addEventListener('input', function() {
+                state.productName = this.value;
+                generatePrompt();
+            });
+
+            // Generate button
+            document.getElementById('generateBtn').addEventListener('click', generatePrompt);
+
+            // Copy button
+            document.getElementById('copyBtn').addEventListener('click', function() {
+                const text = document.getElementById('promptOutput').textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('已复制到剪贴板');
+                });
+            });
+
+            // Export button
+            document.getElementById('exportBtn').addEventListener('click', function() {
+                const prompt = document.getElementById('promptOutput').textContent;
+                const negative = document.getElementById('negativeOutput').textContent;
+                let content = `ITO 摄影提示词\n平台: ${state.platform.toUpperCase()}\n风格: ${state.style}\n\n【正向提示词】\n${prompt}`;
+                if (negative) content += `\n\n【负向提示词】\n${negative}`;
+                content += `\n\n生成时间: ${new Date().toLocaleString()}`;
+                
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ITO_prompt_${Date.now()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('已导出 TXT 文件');
+            });
+
+            // Settings modal
+            document.getElementById('settingsBtn').addEventListener('click', openSettings);
+            document.getElementById('closeModal').addEventListener('click', closeSettings);
+            document.getElementById('cancelSettings').addEventListener('click', closeSettings);
+            document.getElementById('saveSettings').addEventListener('click', saveSettings);
+            document.getElementById('testConnection').addEventListener('click', testConnection);
+            document.getElementById('settingsModal').addEventListener('click', function(e) {
+                if (e.target === this) closeSettings();
+            });
+
+            // Load saved settings
+            loadSettings();
+
+            // Initial generate
+            generatePrompt();
+        });
+
+        function generatePrompt() {
+            let prompt = '';
+            
+            if (state.tab === 'product') {
+                const product = (state.kbProducts && state.kbProducts[state.product]) || productDescs[state.product];
+                const fullProduct = state.productName ? `${product} ${state.productName}` : product;
+                const style = styleConfigs[state.style];
+                
+                if (state.platform === 'mj') {
+                    prompt = generateMJPrompt(fullProduct, style);
+                } else if (state.platform === 'sd') {
+                    prompt = generateSDPrompt(fullProduct, style);
+                } else {
+                    prompt = generateLovartPrompt(fullProduct, style);
+                }
+                
+                document.getElementById('negativeOutput').style.display = state.platform === 'sd' ? 'block' : 'none';
+                document.getElementById('negativeOutput').textContent = state.platform === 'sd' 
+                    ? 'blurry, low quality, distorted, watermark, text, logo'
+                    : '';
+                    
+            } else if (state.tab === 'portrait') {
+                prompt = generatePortraitPrompt();
+            } else if (state.tab === 'scene') {
+                prompt = generateScenePrompt();
+            }
+            
+            document.getElementById('promptOutput').innerHTML = prompt;
+        }
+
+        function generateMJPrompt(product, style) {
+            let p = `<strong>Product photography:</strong> ${product}, `;
+            p += `${state.scene === 'pure' ? 'clean gradient ' + state.color + ' background' : state.scene + ' background'}, `;
+            p += `<strong>${state.lighting}</strong> lighting, <strong>${state.angle}</strong> angle, <strong>${state.lens}</strong> lens, <strong>${state.aperture}</strong>, `;
+            if (state.edgeLight) p += 'rim lighting for edge separation, ';
+            p += `<strong>${style.palette}</strong>, <strong>${style.mood}</strong> mood, ${style.ref} style, `;
+            if (state.detail) p += 'sharp details on hardware and stitching, ';
+            if (state.brand) p += 'premium brand quality, ';
+            p += '<strong>8K</strong>, commercial photography, ultra-detailed';
+            return p;
+        }
+
+        function generateSDPrompt(product, style) {
+            let p = `<strong>product photo of</strong> ${product}, `;
+            p += `${state.scene === 'pure' ? 'solid ' + state.color + ' background' : state.scene + ' setting'}, `;
+            p += `<strong>${state.lighting}</strong> soft light, professional studio, <strong>${state.angle}</strong> view, <strong>${state.lens}</strong> lens, <strong>${state.aperture}</strong>, `;
+            p += `<strong>${style.palette}</strong>, <strong>${style.mood}</strong>, `;
+            if (state.detail) p += 'intricate details, fine texture, ';
+            if (state.brand) p += 'high-end luxury feel, ';
+            p += '<strong>photorealistic</strong>, high detail, professional product photography';
+            return p;
+        }
+
+        function generateLovartPrompt(product, style) {
+            let p = `<strong>专业电商产品摄影：</strong>${product}，`;
+            p += `背景：${state.scene === 'pure' ? state.color + '纯色渐变' : state.scene + '场景'}，`;
+            p += `光线：<strong>${state.lighting}</strong>，<strong>${state.angle}</strong>角度，`;
+            p += `镜头：<strong>${state.lens}</strong>，<strong>${style.palette}</strong>，<strong>${style.mood}</strong>，`;
+            if (state.detail) p += '细节精致（五金/缝线/纹理），';
+            if (state.brand) p += 'ITO高端品牌质感，';
+            p += '<strong>8K高清</strong>，商业级产品摄影';
+            return p;
+        }
+
+        function generatePortraitPrompt() {
+            const style = portraitStyles[state.style];
+            let p = `<strong>人像摄影：</strong>自信年轻女性，穿着现代休闲服装，精致妆容，`;
+            p += `<strong>${style.mood}</strong>表情，自然站姿，`;
+            p += `场景：<strong>${style.scene}</strong>，<strong>${style.light}</strong>，`;
+            p += `85mm f/1.8 镜头，浅景深奶油散景，`;
+            p += `<strong>${style.mood}</strong>情绪，${state.style === 'film' ? 'Kodak Portra 400' : '专业人像'}调色，`;
+            if (state.detail) p += '皮肤质感通透，睫毛根根分明，';
+            p += '8K，杂志级人像摄影';
+            return p;
+        }
+
+        function generateScenePrompt() {
+            const style = sceneStyles[state.style];
+            let p = `<strong>场景摄影：</strong><strong>${style.type}</strong>，`;
+            p += `<strong>${style.mood}</strong>氛围，`;
+            p += `<strong>${style.light}</strong>，`;
+            p += '16-35mm 广角，f/8-f/11 深景深，';
+            p += '三分法构图，层次分明，';
+            if (state.detail) p += '前景细节丰富，';
+            if (state.brand) p += '电影感调色，';
+            p += '8K，国家地理级别风光摄影';
+            return p;
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('show');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('show');
+        }
+
+        function saveSettings() {
+            const config = {
+                apiBase: document.getElementById('apiBase').value.trim(),
+                clientId: document.getElementById('clientId').value.trim(),
+                apiKey: document.getElementById('apiKey').value.trim(),
+                kbId: document.getElementById('kbId').value.trim()
+            };
+            localStorage.setItem('ito_prompt_settings', JSON.stringify(config));
+            showToast('设置已保存');
+            closeSettings();
+            if (config.apiBase && config.clientId && config.apiKey) {
+                connectKB(config);
+            }
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('ito_prompt_settings');
+            if (saved) {
+                const config = JSON.parse(saved);
+                document.getElementById('apiBase').value = config.apiBase || '';
+                document.getElementById('clientId').value = config.clientId || '';
+                document.getElementById('apiKey').value = config.apiKey || '';
+                document.getElementById('kbId').value = config.kbId || '';
+                if (config.apiBase && config.clientId && config.apiKey) {
+                    connectKB(config);
+                }
+            }
+        }
+
+        async function connectKB(config) {
+            try {
+                const response = await fetch(config.apiBase + 'knowledge/list', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ima-openapi-clientid': config.clientId,
+                        'ima-openapi-apikey': config.apiKey
+                    },
+                    body: JSON.stringify({ limit: 10 })
+                });
+                const data = await response.json();
+                if (data.code === 0 || data.errcode === 0) {
+                    state.kbConnected = true;
+                    updateKBStatus(true, '知识库已连接');
+                } else {
+                    throw new Error(data.message || '连接失败');
+                }
+            } catch (e) {
+                state.kbConnected = false;
+                updateKBStatus(false, '连接失败: ' + e.message);
+            }
+        }
+
+        function testConnection() {
+            const config = {
+                apiBase: document.getElementById('apiBase').value.trim(),
+                clientId: document.getElementById('clientId').value.trim(),
+                apiKey: document.getElementById('apiKey').value.trim(),
+                kbId: document.getElementById('kbId').value.trim()
+            };
+            if (!config.apiBase || !config.clientId || !config.apiKey) {
+                showToast('请填写完整的API配置');
+                return;
+            }
+            document.getElementById('testConnection').textContent = '测试中...';
+            connectKB(config).then(() => {
+                document.getElementById('testConnection').textContent = '测试连接';
+            });
+        }
+
+        function updateKBStatus(connected, text) {
+            const dot = document.querySelector('#kbStatus .kb-dot');
+            const span = document.querySelector('#kbStatus .kb-text');
+            dot.classList.toggle('connected', connected);
+            span.textContent = text;
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.textContent = text;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+</html>
